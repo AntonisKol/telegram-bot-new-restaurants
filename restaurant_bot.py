@@ -68,10 +68,17 @@ def fetch_restaurants():
     );
     out;
     """
-    r = requests.post(url, data=query)
-    data = r.json()
-    return data.get("elements", [])
-
+    try:
+        r = requests.post(url, data=query, timeout=60)
+        r.raise_for_status()  # raise error for non-200
+        data = r.json()       # may still fail
+        return data.get("elements", [])
+    except requests.exceptions.RequestException as e:
+        log(f"Overpass request failed: {e}")
+        return []
+    except ValueError as e:
+        log(f"Overpass returned invalid JSON: {e}")
+        return []
 # -----------------------
 # Main logic
 # -----------------------
