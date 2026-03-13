@@ -1,29 +1,30 @@
+import os
 import json
 import requests
 from datetime import datetime, timedelta
 
-# -------------------------------
-# Telegram configuration from config.json
-# -------------------------------
-with open("config.json") as f:
-    config = json.load(f)
+# -----------------------
+# CONFIG from environment
+# -----------------------
 
-TELEGRAM_BOT_TOKEN = config["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = int(config["TELEGRAM_CHAT_ID"])  # ensure numeric
+TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+TELEGRAM_CHAT_ID = int(os.environ["TELEGRAM_CHAT_ID"])
 
-# -------------------------------
+# -----------------------
 # Logging
-# -------------------------------
+# -----------------------
+
 def log(msg):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line = f"[{timestamp}] {msg}"
+    t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{t}] {msg}"
     print(line)
     with open("bot.log", "a") as f:
         f.write(line + "\n")
 
-# -------------------------------
-# Telegram messaging
-# -------------------------------
+# -----------------------
+# Telegram
+# -----------------------
+
 def send_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
@@ -38,9 +39,10 @@ def send_message(text):
     except Exception as e:
         log(f"Telegram send failed: {e}")
 
-# -------------------------------
-# Load / save previous restaurants
-# -------------------------------
+# -----------------------
+# Load / save
+# -----------------------
+
 def load_restaurants():
     try:
         with open("restaurants.json") as f:
@@ -52,9 +54,10 @@ def save_restaurants(data):
     with open("restaurants.json", "w") as f:
         json.dump(data, f, indent=2)
 
-# -------------------------------
-# Fetch restaurants from Overpass
-# -------------------------------
+# -----------------------
+# OSM
+# -----------------------
+
 def fetch_restaurants():
     url = "https://overpass-api.de/api/interpreter"
     query = """
@@ -69,19 +72,19 @@ def fetch_restaurants():
     data = r.json()
     return data.get("elements", [])
 
-# -------------------------------
-# Main bot logic
-# -------------------------------
+# -----------------------
+# Main logic
+# -----------------------
+
 def run():
     log("Starting daily restaurant check")
-
     saved = load_restaurants()
     saved_ids = {r["osm_id"] for r in saved}
 
     elements = fetch_restaurants()
     cutoff = datetime.utcnow() - timedelta(days=1)
 
-    new_restaurants = []
+    new = []
 
     for el in elements:
         tags = el.get("tags", {})
@@ -91,30 +94,27 @@ def run():
             continue
         t = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         if osm_id not in saved_ids and t > cutoff:
-            restaurant = {
+            r = {
                 "osm_id": osm_id,
                 "name": tags.get("name", "Unnamed"),
                 "lat": el.get("lat"),
                 "lon": el.get("lon"),
                 "timestamp": ts
             }
-            new_restaurants.append(restaurant)
-            saved.append(restaurant)
+            new.append(r)
+            saved.append(r)
 
     save_restaurants(saved)
 
-    if new_restaurants:
+    if new:
         msg = "🍽️ <b>Restaurants added in last 24h</b>\n\n"
-        for r in new_restaurants:
+        for r in new:
             msg += f"- {r['name']} ({r['lat']:.5f}, {r['lon']:.5f})\n"
         send_message(msg)
-        log(f"Sent {len(new_restaurants)} restaurants")
+        log(f"Sent {len(new)} restaurants")
     else:
         send_message("No new restaurants were added today.")
         log("No new restaurants")
 
-# -------------------------------
-# Run immediately when executed
-# -------------------------------
 if __name__ == "__main__":
     run()

@@ -1,38 +1,45 @@
 name: Daily Restaurant Check
 
-# Triggers: push, manual, scheduled
+# Triggers: scheduled at 00:02 Berlin time (UTC+1/2) and manual, plus on every push
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch: # manual trigger
   schedule:
-    - cron: "2 23 * * *" # 00:02 Berlin time (UTC+1/2 in winter)
+    - cron: "2 23 * * *" # 00:02 Berlin = 23:02 UTC in winter
+  workflow_dispatch:
+  push:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repo
+      # Step 1: checkout the repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Python
+      # Step 2: setup Python
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      # Step 3: Install dependencies
+      # Step 3: install dependencies
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests pytz
 
-      # Step 4: Run the bot
-      - name: Run Restaurant Bot
+      # Step 4: check secrets are set (optional)
+      - name: Check env
+        run: |
+          echo "TELEGRAM_BOT_TOKEN is set: ${TELEGRAM_BOT_TOKEN:+yes}"
+          echo "TELEGRAM_CHAT_ID is set: ${TELEGRAM_CHAT_ID:+yes}"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      # Step 5: run the bot
+      - name: Run Restaurant Bot
         run: python restaurant_bot.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
