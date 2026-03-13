@@ -1,6 +1,6 @@
 # Telegram Berlin Restaurants Bot
 
-This bot tracks new restaurants in Berlin from OpenStreetMap (via the Overpass API which i might migrate to Google) and sends daily updates to a Telegram chat. It is fully automated and can run via GitHub Actions.
+This bot tracks new restaurants in Berlin from OpenStreetMap (via the Overpass API) and sends daily updates to a Telegram chat. It is fully automated and can run via GitHub Actions.
 
 ---
 
