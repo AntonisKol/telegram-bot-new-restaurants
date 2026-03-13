@@ -1,0 +1,15 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+env/
+
+# JSON data files
+restaurants.json
+bot.log
+
+# Sensitive config
+config.json
