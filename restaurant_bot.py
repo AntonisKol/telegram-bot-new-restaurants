@@ -9,9 +9,8 @@ from datetime import datetime, timedelta
 with open("config.json") as f:
     config = json.load(f)
 
-TELEGRAM_BOT_TOKEN = config["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = config["TELEGRAM_CHAT_ID"]
-
+TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+TELEGRAM_CHAT_ID = int(os.environ["TELEGRAM_CHAT_ID"])  
 # -----------------------
 # Logging
 # -----------------------
