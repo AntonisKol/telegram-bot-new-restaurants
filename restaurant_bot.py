@@ -2,30 +2,28 @@ import json
 import requests
 from datetime import datetime, timedelta
 
-# -----------------------
-# CONFIG
-# -----------------------
-
+# -------------------------------
+# Telegram configuration from config.json
+# -------------------------------
 with open("config.json") as f:
     config = json.load(f)
 
-TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = int(os.environ["TELEGRAM_CHAT_ID"])  
-# -----------------------
-# Logging
-# -----------------------
+TELEGRAM_BOT_TOKEN = config["TELEGRAM_BOT_TOKEN"]
+TELEGRAM_CHAT_ID = int(config["TELEGRAM_CHAT_ID"])  # ensure numeric
 
+# -------------------------------
+# Logging
+# -------------------------------
 def log(msg):
-    t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line = f"[{t}] {msg}"
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp}] {msg}"
     print(line)
     with open("bot.log", "a") as f:
         f.write(line + "\n")
 
-# -----------------------
-# Telegram
-# -----------------------
-
+# -------------------------------
+# Telegram messaging
+# -------------------------------
 def send_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
@@ -40,25 +38,23 @@ def send_message(text):
     except Exception as e:
         log(f"Telegram send failed: {e}")
 
-# -----------------------
-# Load / save
-# -----------------------
-
+# -------------------------------
+# Load / save previous restaurants
+# -------------------------------
 def load_restaurants():
     try:
         with open("restaurants.json") as f:
             return json.load(f)
-    except:
+    except FileNotFoundError:
         return []
 
 def save_restaurants(data):
     with open("restaurants.json", "w") as f:
         json.dump(data, f, indent=2)
 
-# -----------------------
-# OSM
-# -----------------------
-
+# -------------------------------
+# Fetch restaurants from Overpass
+# -------------------------------
 def fetch_restaurants():
     url = "https://overpass-api.de/api/interpreter"
     query = """
@@ -73,19 +69,19 @@ def fetch_restaurants():
     data = r.json()
     return data.get("elements", [])
 
-# -----------------------
-# Main logic
-# -----------------------
-
+# -------------------------------
+# Main bot logic
+# -------------------------------
 def run():
     log("Starting daily restaurant check")
+
     saved = load_restaurants()
     saved_ids = {r["osm_id"] for r in saved}
 
     elements = fetch_restaurants()
     cutoff = datetime.utcnow() - timedelta(days=1)
 
-    new = []
+    new_restaurants = []
 
     for el in elements:
         tags = el.get("tags", {})
@@ -95,31 +91,30 @@ def run():
             continue
         t = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         if osm_id not in saved_ids and t > cutoff:
-            r = {
+            restaurant = {
                 "osm_id": osm_id,
                 "name": tags.get("name", "Unnamed"),
                 "lat": el.get("lat"),
                 "lon": el.get("lon"),
                 "timestamp": ts
             }
-            new.append(r)
-            saved.append(r)
+            new_restaurants.append(restaurant)
+            saved.append(restaurant)
 
     save_restaurants(saved)
 
-    if new:
+    if new_restaurants:
         msg = "🍽️ <b>Restaurants added in last 24h</b>\n\n"
-        for r in new:
+        for r in new_restaurants:
             msg += f"- {r['name']} ({r['lat']:.5f}, {r['lon']:.5f})\n"
         send_message(msg)
-        log(f"Sent {len(new)} restaurants")
+        log(f"Sent {len(new_restaurants)} restaurants")
     else:
         send_message("No new restaurants were added today.")
         log("No new restaurants")
 
-# -----------------------
-# Optional test run immediately
-# -----------------------
-
+# -------------------------------
+# Run immediately when executed
+# -------------------------------
 if __name__ == "__main__":
     run()
