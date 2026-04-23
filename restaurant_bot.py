@@ -146,9 +146,10 @@ def run():
         for r in updated_restaurants:
             msg += f"- {r['name']} ({r['lat']:.5f}, {r['lon']:.5f})\n"
 
-    if not msg:
-        msg = "No new or modified restaurants since last check."
-
+            if msg:
+                send_message(msg)
+            else:
+                log("No changes, nothing sent")
     send_message(msg)
     log(f"Sent {len(new_restaurants)} new and {len(updated_restaurants)} updated restaurants")
 
